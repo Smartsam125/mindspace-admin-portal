@@ -6,21 +6,6 @@ import { PageHeader, Card, DataTable, Td, Badge, Btn, Modal, Input, Select, Text
 import { colors } from '../../shared/utils/colors'
 import { fmtUGXFull, labelify } from '../../shared/utils/format'
 
-const BASE_URL = '/api/v1'
-
-async function uploadProfilePicture(file) {
-  const token = localStorage.getItem('ms_token')
-  const fd = new FormData()
-  fd.append('file', file)
-  const res = await fetch(`${BASE_URL}/admin/upload/profile-picture`, {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${token}` },
-    body: fd,
-  })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.message || 'Upload failed')
-  return data.data.url
-}
 
 function ImageUpload({ value, onChange }) {
   const [uploading, setUploading] = useState(false)
@@ -31,7 +16,7 @@ function ImageUpload({ value, onChange }) {
     if (!file) return
     setErr('')
     setUploading(true)
-    try { onChange(await uploadProfilePicture(file)) }
+    try { onChange(await api.uploadProfilePicture(file)) }
     catch (ex) { setErr(ex.message) }
     finally { setUploading(false) }
   }
@@ -139,7 +124,7 @@ const BLANK = {
   specializationIds:[], therapyTypeId:'', therapyStyleIds:[],
 }
 
-export default function TherapistsPage() {
+export default function TherapistsPage({ onViewTherapist }) {
   const [page, setPage]             = useState(0)
   const [showAdd, setShowAdd]       = useState(false)
   const [editTarget, setEditTarget] = useState(null)
@@ -225,6 +210,7 @@ export default function TherapistsPage() {
             <Td nowrap><Badge status={t.online ? 'ONLINE' : 'OFFLINE'} /></Td>
             <Td nowrap>
               <div className="flex gap-2">
+                <Btn variant="ghost" size="sm" onClick={() => onViewTherapist?.(t.id)}>View</Btn>
                 <Btn variant="secondary" size="sm" onClick={() => openEdit(t)}>Edit</Btn>
                 <Btn variant={t.active ? 'danger' : 'secondary'} size="sm" onClick={() => handleToggle(t)}>
                   {t.active ? 'Suspend' : 'Activate'}

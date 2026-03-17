@@ -4,6 +4,26 @@ class ApiError extends Error {
   constructor(message, status) { super(message); this.status = status }
 }
 
+async function tryRefresh() {
+  const refresh = localStorage.getItem('ms_refresh')
+  if (!refresh) return false
+  try {
+    const res = await fetch(`${BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: refresh }),
+    })
+    if (!res.ok) return false
+    const data = await res.json()
+    const d = data.data
+    localStorage.setItem('ms_token', d.accessToken)
+    localStorage.setItem('ms_refresh', d.refreshToken)
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function request(method, path, body, params) {
   const url = new URL(path, window.location.origin)
   url.pathname = BASE + path
@@ -17,14 +37,23 @@ async function request(method, path, body, params) {
   const headers = { 'Content-Type': 'application/json' }
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const res = await fetch(url.toString(), { method, headers, body: body != null ? JSON.stringify(body) : undefined })
+  let res = await fetch(url.toString(), { method, headers, body: body != null ? JSON.stringify(body) : undefined })
 
+  // Try refresh on 401
   if (res.status === 401) {
-    localStorage.removeItem('ms_token')
-    localStorage.removeItem('ms_refresh')
-    localStorage.removeItem('ms_user')
-    window.dispatchEvent(new Event('auth:logout'))
-    throw new ApiError('Session expired', 401)
+    const refreshed = await tryRefresh()
+    if (refreshed) {
+      const newToken = localStorage.getItem('ms_token')
+      headers['Authorization'] = `Bearer ${newToken}`
+      res = await fetch(url.toString(), { method, headers, body: body != null ? JSON.stringify(body) : undefined })
+    }
+    if (res.status === 401) {
+      localStorage.removeItem('ms_token')
+      localStorage.removeItem('ms_refresh')
+      localStorage.removeItem('ms_user')
+      window.dispatchEvent(new Event('auth:logout'))
+      throw new ApiError('Session expired', 401)
+    }
   }
 
   const data = await res.json()
@@ -52,15 +81,27 @@ export const getTherapist    = (id)                     => get(`/admin/therapist
 export const createTherapist = (data)                   => post('/admin/therapists', data)
 export const editTherapist   = (id, data)               => put(`/admin/therapists/${id}`, data)
 
+// Therapist sub-resources
+export const getTherapistFeedbacks    = (id, page = 0, size = 15) => get(`/admin/therapists/${id}/feedbacks`, { page, size })
+export const getTherapistAppointments = (id, page = 0, size = 15, status) => get(`/admin/therapists/${id}/appointments`, { page, size, status })
+
 // Clients
 export const getClients = (page = 0, size = 15) => get('/admin/clients', { page, size })
 
-// Appointments
-export const getAppointments   = (page = 0, size = 15, status) => get('/admin/appointments', { page, size, status })
-export const cancelAppointment = (id)                           => del(`/admin/appointments/${id}`)
+// Appointments (with advanced filters)
+export const getAppointments = (page = 0, size = 15, filters = {}) => {
+  const { status, therapistId, clientEmail, dateFrom, dateTo } = typeof filters === 'string' ? { status: filters } : (filters || {})
+  return get('/admin/appointments', { page, size, status, therapistId, clientEmail, dateFrom, dateTo })
+}
+export const cancelAppointment = (id) => del(`/admin/appointments/${id}`)
 
 // Users
 export const toggleUserActive = (id) => patch(`/admin/users/${id}/toggle-active`)
+
+// Payouts
+export const getPayoutSummary   = (month) => get('/admin/payouts/summary', { month })
+export const recordPayout       = (therapistId, data) => post(`/admin/therapists/${therapistId}/payouts`, data)
+export const getTherapistPayouts = (id) => get(`/admin/therapists/${id}/payouts`)
 
 // Content
 export const getContent    = (type)       => get('/admin/content', { type })
@@ -83,3 +124,18 @@ export const removeAdmin  = (id)   => del(`/admin/admins/${id}`)
 
 // Broadcast
 export const broadcast = (data) => post('/admin/broadcast', data)
+
+// Upload
+export const uploadProfilePicture = async (file) => {
+  const token = localStorage.getItem('ms_token')
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await fetch(`${BASE}/admin/upload/profile-picture`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
+    body: fd,
+  })
+  const data = await res.json()
+  if (!res.ok) throw new ApiError(data.message || 'Upload failed', res.status)
+  return data.data.url
+}

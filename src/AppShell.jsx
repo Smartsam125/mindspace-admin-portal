@@ -1,23 +1,26 @@
 import { useState } from 'react'
-import { LayoutDashboard, Users, UserCheck, Calendar, FileText, LogOut, ChevronLeft, ChevronRight, Settings, Shield, Bell } from 'lucide-react'
+import { LayoutDashboard, Users, UserCheck, Calendar, FileText, LogOut, ChevronLeft, ChevronRight, Settings, Shield, Bell, Wallet } from 'lucide-react'
 import { useAuth } from './features/auth/AuthContext'
 import { Avatar } from './shared/components'
 import { colors } from './shared/utils/colors'
 
-import DashboardPage    from './features/dashboard/DashboardPage'
-import TherapistsPage   from './features/therapists/TherapistsPage'
-import ClientsPage      from './features/clients/ClientsPage'
-import AppointmentsPage from './features/appointments/AppointmentsPage'
-import ContentPage      from './features/content/ContentPage'
-import OptionsPage      from './features/options/OptionsPage'
-import AdminsPage       from './features/admins/AdminsPage'
-import BroadcastPage    from './features/broadcast/BroadcastPage'
+import DashboardPage       from './features/dashboard/DashboardPage'
+import TherapistsPage      from './features/therapists/TherapistsPage'
+import TherapistDetailPage from './features/therapists/TherapistDetailPage'
+import ClientsPage         from './features/clients/ClientsPage'
+import AppointmentsPage    from './features/appointments/AppointmentsPage'
+import PayoutsPage         from './features/payouts/PayoutsPage'
+import ContentPage         from './features/content/ContentPage'
+import OptionsPage         from './features/options/OptionsPage'
+import AdminsPage          from './features/admins/AdminsPage'
+import BroadcastPage       from './features/broadcast/BroadcastPage'
 
 const NAV = [
   { id: 'dashboard',    label: 'Dashboard',    Icon: LayoutDashboard },
   { id: 'appointments', label: 'Appointments', Icon: Calendar },
   { id: 'therapists',   label: 'Therapists',   Icon: UserCheck },
   { id: 'clients',      label: 'Clients',      Icon: Users },
+  { id: 'payouts',      label: 'Payouts',      Icon: Wallet },
   { id: 'content',      label: 'Content',      Icon: FileText },
   { id: 'options',      label: 'Options',       Icon: Settings },
   { id: 'broadcast',    label: 'Broadcast',    Icon: Bell },
@@ -27,26 +30,51 @@ const SUPER_NAV = [
   { id: 'admins', label: 'Admins', Icon: Shield },
 ]
 
-const PAGES = {
-  dashboard:    DashboardPage,
-  appointments: AppointmentsPage,
-  therapists:   TherapistsPage,
-  clients:      ClientsPage,
-  content:      ContentPage,
-  options:      OptionsPage,
-  admins:       AdminsPage,
-  broadcast:    BroadcastPage,
-}
-
 export default function AppShell() {
   const { user, logout }   = useAuth()
   const [active, setActive]       = useState('dashboard')
   const [collapsed, setCollapsed] = useState(false)
+  const [therapistDetailId, setTherapistDetailId] = useState(null)
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
   const navItems = isSuperAdmin ? [...NAV, ...SUPER_NAV] : NAV
 
-  const Page = PAGES[active] || DashboardPage
+  const viewTherapist = (id) => {
+    setTherapistDetailId(id)
+    setActive('therapist-detail')
+  }
+
+  const backFromDetail = () => {
+    setTherapistDetailId(null)
+    setActive('therapists')
+  }
+
+  const navigate = (id) => {
+    setActive(id)
+    setTherapistDetailId(null)
+  }
+
+  const renderPage = () => {
+    if (active === 'therapist-detail' && therapistDetailId) {
+      return <TherapistDetailPage therapistId={therapistDetailId} onBack={backFromDetail} />
+    }
+    switch (active) {
+      case 'dashboard':    return <DashboardPage />
+      case 'appointments': return <AppointmentsPage />
+      case 'therapists':   return <TherapistsPage onViewTherapist={viewTherapist} />
+      case 'clients':      return <ClientsPage />
+      case 'payouts':      return <PayoutsPage onViewTherapist={viewTherapist} />
+      case 'content':      return <ContentPage />
+      case 'options':      return <OptionsPage />
+      case 'admins':       return <AdminsPage />
+      case 'broadcast':    return <BroadcastPage />
+      default:             return <DashboardPage />
+    }
+  }
+
+  const activeLabel = active === 'therapist-detail'
+    ? 'Therapist Detail'
+    : navItems.find(n => n.id === active)?.label || 'Dashboard'
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: colors.bg }}>
@@ -74,9 +102,9 @@ export default function AppShell() {
 
         <nav className="flex-1 p-2 flex flex-col gap-0.5 overflow-y-auto">
           {navItems.map(({ id, label, Icon }) => {
-            const isActive = active === id
+            const isActive = active === id || (id === 'therapists' && active === 'therapist-detail')
             return (
-              <button key={id} onClick={() => setActive(id)}
+              <button key={id} onClick={() => navigate(id)}
                 className="flex items-center gap-3 rounded-lg transition-all w-full text-left border-0"
                 style={{
                   padding: collapsed ? '10px 0' : '10px 12px',
@@ -119,7 +147,7 @@ export default function AppShell() {
         <header className="flex items-center justify-between px-7 py-3 bg-white border-b flex-shrink-0"
           style={{ borderColor: '#f0f0f0' }}>
           <h2 className="font-bold text-base capitalize" style={{ color: colors.dark }}>
-            {navItems.find(n => n.id === active)?.label}
+            {activeLabel}
           </h2>
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#10b981' }} />
@@ -127,7 +155,7 @@ export default function AppShell() {
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-7">
-          <Page />
+          {renderPage()}
         </main>
       </div>
     </div>
