@@ -110,6 +110,9 @@ export const updateContent = (id, data)   => put(`/admin/content/${id}`, data)
 export const deleteContent = (id)         => del(`/admin/content/${id}`)
 export const toggleContent = (id)         => patch(`/admin/content/${id}/toggle`)
 
+// Events
+export const getEventAttendees = (eventId) => get(`/admin/events/${eventId}/attendees`)
+
 // Enum Options (public)
 export const getOptions       = ()     => get('/public/options')
 // Enum Options (admin CRUD)
@@ -126,11 +129,11 @@ export const removeAdmin  = (id)   => del(`/admin/admins/${id}`)
 export const broadcast = (data) => post('/admin/broadcast', data)
 
 // Upload
-export const uploadProfilePicture = async (file) => {
+async function uploadFile(endpoint, file) {
   const token = localStorage.getItem('ms_token')
   const fd = new FormData()
   fd.append('file', file)
-  const res = await fetch(`${BASE}/admin/upload/profile-picture`, {
+  const res = await fetch(`${BASE}${endpoint}`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${token}` },
     body: fd,
@@ -139,3 +142,6 @@ export const uploadProfilePicture = async (file) => {
   if (!res.ok) throw new ApiError(data.message || 'Upload failed', res.status)
   return data.data.url
 }
+
+export const uploadProfilePicture = (file) => uploadFile('/admin/upload/profile-picture', file)
+export const uploadContentImage   = (file) => uploadFile('/admin/upload/profile-picture', file)
