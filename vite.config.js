@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://45.10.154.5:4055',
+        target: 'https://mind-space.app',
         changeOrigin: true,
       }
     }
