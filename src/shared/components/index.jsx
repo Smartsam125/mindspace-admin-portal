@@ -291,7 +291,7 @@ export function DataTable({ columns, rows, loading, empty = 'No records found', 
               key={row.id ?? i}
               className="transition-colors duration-150"
               style={{ borderBottom: `1px solid ${colors.border}` }}
-              onMouseEnter={e => e.currentTarget.style.background = '#FAFAF8'}
+              onMouseEnter={e => e.currentTarget.style.background = '#F5FAFB'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               {renderRow(row, i)}

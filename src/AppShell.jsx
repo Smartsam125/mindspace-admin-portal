@@ -89,7 +89,7 @@ export default function AppShell() {
         className="flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out"
         style={{
           width: sideW,
-          background: `linear-gradient(180deg, ${colors.sidebar} 0%, #1D1720 100%)`,
+          background: `linear-gradient(180deg, ${colors.sidebar} 0%, #0E272B 100%)`,
         }}
       >
         <div
